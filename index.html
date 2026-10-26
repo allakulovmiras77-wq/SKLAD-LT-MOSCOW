@@ -46,7 +46,13 @@ import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmai
 import {getFirestore,collection,doc,onSnapshot,setDoc,updateDoc,deleteDoc,getDoc,getDocs,query,where,orderBy,writeBatch,increment} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 /* ===== 1. ВСТАВЬТЕ СВОИ ДАННЫЕ ИЗ FIREBASE (Project settings → Your apps → Web) ===== */
-const firebaseConfig={apiKey:"ВАШ_API_KEY",authDomain:"ВАШ_ПРОЕКТ.firebaseapp.com",projectId:"ВАШ_ПРОЕКТ",storageBucket:"ВАШ_ПРОЕКТ.appspot.com",messagingSenderId:"000000000000",appId:"ВАШ_APP_ID"};
+const firebaseConfig={apiKey: "AIzaSyCKixbuYcVm1c1-hlMag5_KFfKGzBvMn34",
+  authDomain: "sklad-lt-moscow.firebaseapp.com",
+  projectId: "sklad-lt-moscow",
+  storageBucket: "sklad-lt-moscow.firebasestorage.app",
+  messagingSenderId: "924312015041",
+  appId: "1:924312015041:web:f3c670f2b87fa07dbd0440",
+  measurementId: "G-3HVVXQY4D1"};
 /* ===== 2. Email руководителя: кто зарегистрируется с ним, станет администратором ===== */
 const ADMIN_EMAIL="ваш@email.com";
 /* ================================================================================== */
