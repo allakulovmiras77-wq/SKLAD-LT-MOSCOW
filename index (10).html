@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0a1836">
+<title>LT СКЛАД</title>
+<style>
+:root{--n:#0a1836;--n2:#16337a;--ac:#2f6df0;--bg:#e9eef7;--tx:#0d1b3d;--mu:#667599;--rd:#e5384b;--gn:#1fae72;--yl:#ffc400}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 Roboto,Arial,sans-serif;padding-bottom:120px}
+h2,h3,.big,.ttl{font-family:Bahnschrift,"Roboto Condensed","Arial Narrow",Arial,sans-serif;text-transform:uppercase;letter-spacing:.5px}
+h2{font-size:28px;margin:18px 0 12px}h3{margin:0 0 6px;font-size:22px}
+button,input,select{font:inherit;color:inherit}
+input,select{width:100%;padding:13px;border-radius:14px;border:2px solid #cfd8ea;background:#f6f8fd;min-height:50px}
+.b{border:0;border-radius:14px;padding:12px 16px;background:#dfe7f6;min-height:50px;font-weight:700;cursor:pointer}
+.b.p{background:var(--ac);color:#fff}.b.r{background:var(--rd);color:#fff}.b.g{background:var(--gn);color:#fff}.b.sm{min-height:40px;padding:8px 14px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sp{flex:1}.mu{color:var(--mu);font-size:14px}
+header{background:linear-gradient(135deg,var(--n),var(--n2));color:#fff;padding:16px 16px 20px;border-radius:0 0 28px 28px;display:flex;gap:14px;align-items:center;position:relative}
+header:after{content:"";position:absolute;left:0;right:0;bottom:0;height:7px;border-radius:0 0 28px 28px;background:repeating-linear-gradient(-45deg,var(--yl) 0 12px,#111 12px 24px)}
+.lg{width:54px;height:54px;border-radius:14px;background:var(--n);border:2px solid var(--yl);display:grid;place-items:center;font:900 22px Arial;font-style:italic}
+.ttl{font-size:24px;font-weight:800;line-height:1}.by{font-size:14px;color:#9fc0ff}
+main{padding:14px;max-width:760px;margin:auto}
+.card{background:#fff;border-radius:20px;padding:14px;margin-bottom:12px;box-shadow:0 4px 14px #0a183614;border-left:7px solid var(--ac)}
+.card.lnk{cursor:pointer}.card.out{border-color:var(--rd);background:#fdecee;color:var(--rd)}
+.hero{background:linear-gradient(135deg,var(--n),var(--n2));color:#fff;border-radius:24px;padding:20px;margin-bottom:14px;position:relative;overflow:hidden}
+.hero:after{content:"";position:absolute;right:-20px;bottom:-20px;width:120px;height:120px;background:repeating-linear-gradient(-45deg,#ffc40055 0 10px,transparent 10px 20px);border-radius:20px}
+.big{font-size:56px;font-weight:900;line-height:1}
+.pill,.chip{display:inline-block;padding:4px 10px;border-radius:10px;background:#e3ebfb;font-weight:700;font-size:14px;margin:3px 4px 3px 0}
+.pill{background:var(--n);color:#fff}.chip.r{background:var(--rd);color:#fff}.chip.g{background:#d3f3e4;color:#0c6b45}.chip.y{background:var(--yl)}
+.n{font-size:30px;font-weight:900;font-family:Bahnschrift,Arial}.n small{font-size:14px;color:var(--mu)}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--n);border-radius:26px 26px 0 0;display:grid;grid-template-columns:repeat(5,1fr);padding:10px 4px 14px;z-index:5}
+nav button{background:none;border:0;color:#8fa3d4;font-size:13px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px;position:relative}
+nav button i{font-style:normal;font-size:24px}nav button.on{color:#fff}
+nav .fab{width:76px;height:76px;margin:-40px auto 0;border-radius:50%;background:var(--ac);border:6px solid #fff;color:#fff;font-size:32px;justify-content:center}
+.dot{position:absolute;top:-2px;right:22%;background:var(--rd);color:#fff;border-radius:10px;font-size:11px;padding:1px 6px}
+.ov{position:fixed;inset:0;background:#000b;z-index:20;display:flex;align-items:center;justify-content:center;padding:12px}
+.md{background:#fff;border-radius:22px;padding:18px;width:100%;max-width:440px;max-height:92vh;overflow:auto}
+.md label{display:block;margin:10px 0 4px;color:var(--mu);font-size:13px}
+.login{max-width:380px;margin:8vh auto;padding:20px;text-align:center}.login input{margin-bottom:10px}
+#toast{position:fixed;bottom:130px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:12px 18px;border-radius:14px;z-index:30;display:none;max-width:90%}
+</style></head><body>
+<div id="app"></div><div id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script type="module">
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import {getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getFirestore,collection,doc,onSnapshot,setDoc,updateDoc,deleteDoc,getDoc,query,orderBy,limit,writeBatch,increment} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+/* ===== ВСТАВЬТЕ СВОЙ firebaseConfig (скопируйте из вашего текущего файла на GitHub) ===== */
+const firebaseConfig={apiKey:"ВАШ_API_KEY",authDomain:"ВАШ_ПРОЕКТ.firebaseapp.com",projectId:"ВАШ_ПРОЕКТ",storageBucket:"ВАШ_ПРОЕКТ.appspot.com",messagingSenderId:"000000000000",appId:"ВАШ_APP_ID"};
+const ADMIN_EMAIL="lider3@gmail.com";
+/* ======================================================================================== */
+
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app);
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const tm=t=>new Date(t).toLocaleString('ru',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
+const TY={in:'Приход',out:'Списание'};
+let me=null,items=[],bags=[],users=[],log=[],tab='stock',sub='',q='',unsubs=[];
+const tot=id=>bags.reduce((s,b)=>s+(b.q?.[id]||0),0);
+const place=b=>`Ряд ${esc(b.row||'—')} · Стеллаж ${esc(b.shelf||'—')}`;
+const isAdm=()=>me&&me.role==='admin';
+const mt=s=>!q||s.toLowerCase().includes(q.toLowerCase());
+function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2800)}
+function beep(){try{navigator.vibrate?.(150);const c=new(window.AudioContext||webkitAudioContext)(),o=c.createOscillator();o.connect(c.destination);o.frequency.value=900;o.start();setTimeout(()=>{o.stop();c.close()},130)}catch{}}
+const head=(r='')=>`<header><div class="lg">LT</div><div><div class="ttl">LT СКЛАД</div><div class="by">${r||'Created by Miras'}</div></div></header>`;
+function ov(h){const d=document.createElement('div');d.className='ov';d.innerHTML=`<div class="md">${h}</div>`;document.body.appendChild(d);d.querySelectorAll('[data-x]').forEach(x=>x.onclick=()=>d.remove());return d}
+const btns=ok=>`<div class="row" style="margin-top:14px"><button class="b" data-x>Отмена</button><div class="sp"></div><button class="b p" id="ok">${ok}</button></div>`;
+
+/* ---------- вход ---------- */
+function loginView(reg=false,msg=''){
+ $('#app').innerHTML=`${head()}<div class="login"><h2 style="margin-top:0">${reg?'Регистрация':'Вход'}</h2>
+ ${reg?'<input id="nm" placeholder="Ваше имя">':''}<input id="em" type="email" placeholder="Email" autocomplete="username">
+ <input id="pw" type="password" placeholder="Пароль (минимум 6 символов)" autocomplete="${reg?'new-password':'current-password'}">
+ <button class="b p" style="width:100%" id="go">${reg?'Зарегистрироваться':'Войти'}</button>
+ <div style="color:var(--rd);margin:10px 0;min-height:20px">${esc(msg)}</div>
+ <button class="b" id="sw" style="width:100%">${reg?'Уже есть аккаунт? Войти':'Регистрация сотрудника'}</button></div>`;
+ $('#sw').onclick=()=>loginView(!reg);
+ $('#go').onclick=async()=>{
+  const em=$('#em').value.trim().toLowerCase(),pw=$('#pw').value,nm=reg?$('#nm').value.trim():'';
+  try{
+   if(reg){if(!nm)return loginView(true,'Введите имя');
+    window._reg=true;const c=await createUserWithEmailAndPassword(auth,em,pw),a=em===ADMIN_EMAIL.toLowerCase();
+    await setDoc(doc(db,'users',c.user.uid),{name:nm,email:em,role:a?'admin':'worker',active:a,created:Date.now()});window._reg=false;boot(c.user)}
+   else await signInWithEmailAndPassword(auth,em,pw);
+  }catch(e){window._reg=false;loginView(reg,e.code==='auth/email-already-in-use'?'Этот email уже зарегистрирован':e.code==='auth/weak-password'?'Пароль слишком короткий':e.code&&e.code.includes('invalid')?'Неверный email или пароль':(e.message||'Ошибка'))}
+ };
+}
+onAuthStateChanged(auth,u=>{unsubs.forEach(f=>f());unsubs=[];if(!u){me=null;loginView();return}if(!window._reg)boot(u)});
+async function boot(u){
+ unsubs.forEach(f=>f());unsubs=[];
+ let s=await getDoc(doc(db,'users',u.uid));
+ for(let i=0;i<5&&!s.exists();i++){await new Promise(r=>setTimeout(r,500));s=await getDoc(doc(db,'users',u.uid))}
+ if(!s.exists()){await signOut(auth);return}
+ me={...s.data(),uid:u.uid};
+ if(!me.active){$('#app').innerHTML=`${head()}<div class="login"><div class="card">${esc(me.name)}, вы зарегистрированы или заблокированы. Дождитесь, пока руководитель подтвердит доступ.</div><button class="b" id="lo">Выйти</button></div>`;$('#lo').onclick=()=>signOut(auth);
+  unsubs.push(onSnapshot(doc(db,'users',u.uid),x=>{if(x.exists()&&x.data().active)boot(u)}));return}
+ const er=e=>toast('Ошибка данных: '+e.code),mp=(x,k)=>x.docs.map(d=>({...d.data(),[k]:d.id}));
+ unsubs.push(onSnapshot(doc(db,'users',u.uid),x=>{if(x.exists()&&!x.data().active)boot(u)}));
+ unsubs.push(onSnapshot(collection(db,'items'),x=>{items=mp(x,'id');draw()},er));
+ unsubs.push(onSnapshot(collection(db,'bags'),x=>{bags=mp(x,'id');draw()},er));
+ unsubs.push(onSnapshot(query(collection(db,'log'),orderBy('ts','desc'),limit(100)),x=>{log=mp(x,'id');if(tab==='more')draw()},er));
+ if(isAdm())unsubs.push(onSnapshot(collection(db,'users'),x=>{users=mp(x,'uid');draw()},er));
+ draw();
+}
+
+/* ---------- каркас ---------- */
+function draw(){
+ if(!me)return;
+ if(document.querySelector('.ov'))return setTimeout(draw,1500);
+ const pend=users.filter(u=>!u.active).length;
+ const N=[['stock','Склад','🏠'],['bags','Мешки','📦'],['scan','','⌗'],['codes','Коды','▥'],['more','Ещё','⋯']];
+ const v={stock:vStock,bags:vBags,codes:vCodes,more:vMore}[tab]();
+ $('#app').innerHTML=`${head({stock:'Склад',bags:'Мешки',codes:'Коды',more:'Ещё'}[tab])}<main>${v}</main><nav>${N.map(([k,t,i])=>k==='scan'?`<button class="fab" data-a="scan">${i}</button>`:`<button class="${tab===k?'on':''}" data-a="tab" data-v="${k}"><i>${i}</i>${t}${k==='more'&&pend&&isAdm()?`<span class="dot">${pend}</span>`:''}</button>`).join('')}</nav>`;
+ const s=$('#q');if(s)s.oninput=e=>{q=e.target.value;$('#list').innerHTML={stock:stockL,bags:bagL,codes:codeL}[tab]()};
+}
+const srch=ph=>`<input id="q" placeholder="🔍 ${ph}" value="${esc(q)}" style="margin-bottom:12px">`;
+
+/* ---------- склад ---------- */
+const stockL=()=>items.filter(i=>mt(i.art+' '+i.size+' '+(i.name||''))).map(i=>({i,t:tot(i.id)})).sort((a,b)=>b.t-a.t).map(({i,t})=>`<div class="card lnk" data-a="item" data-id="${i.id}"><div class="row"><b style="font-size:19px">${esc(i.art)}</b><span class="pill">${esc(i.size)}</span><div class="sp"></div><span class="n">${t}<small> шт</small></span></div><div>${bags.filter(b=>b.q?.[i.id]>0).map(b=>`<span class="chip">${esc(b.code)} · Р${esc(b.row||'—')}/С${esc(b.shelf||'—')}: ${b.q[i.id]}</span>`).join('')||'<span class="mu">нет на складе</span>'}</div></div>`).join('')||'<div class="card mu">Халатов пока нет. Добавьте их во вкладке «Коды».</div>';
+function vStock(){const t=items.reduce((s,i)=>s+tot(i.id),0);
+ return `<div class="hero"><div class="mu" style="color:#9fc0ff">Всего на складе</div><div class="big">${t}</div><div>халатов</div><div style="margin-top:10px"><span class="pill" style="background:#ffffff22">${items.filter(i=>tot(i.id)>0).length} позиций</span><span class="pill" style="background:#ffffff22">${bags.length} мешков</span></div></div>${srch('Поиск, например ХМ8 или 2XL')}<div id="list">${stockL()}</div>`}
+
+/* ---------- мешки ---------- */
+const bagL=()=>bags.filter(b=>mt(b.code+' '+(b.row||'')+' '+(b.shelf||''))).sort((a,b)=>a.code.localeCompare(b.code)).map(b=>`<div class="card lnk" data-a="bag" data-id="${b.id}"><div class="row"><b style="font-size:20px">${esc(b.code)}</b><div class="sp"></div><span class="n">${Object.values(b.q||{}).reduce((s,x)=>s+x,0)}<small> шт</small></span></div><div class="chip y">📍 ${place(b)}</div></div>`).join('')||'<div class="card mu">Мешков нет. Нажмите «+ Мешок».</div>';
+const vBags=()=>`<div class="row"><h2 style="margin:6px 0">Мешки</h2><div class="sp"></div><button class="b p" data-a="nb">+ Мешок</button></div>${srch('Мешок, ряд или стеллаж')}<div id="list">${bagL()}</div>`;
+
+/* ---------- коды ---------- */
+const lab=i=>({t:i.art+' · '+i.size,s:i.name||'LT СКЛАД',c:i.code});
+const codeL=()=>items.filter(i=>mt(i.art+' '+i.size+' '+i.code)).sort((a,b)=>(a.art+a.size).localeCompare(b.art+b.size)).map(i=>`<div class="card"><div class="row"><b style="font-size:19px">${esc(i.art)}</b><span class="pill">${esc(i.size)}</span><div class="sp"></div><button class="b sm" data-a="pi" data-id="${i.id}">🖨 Печать</button></div><div class="mu">Штрих-код: <b>${esc(i.code)}</b></div></div>`).join('')||'<div class="card mu">Пока пусто. Нажмите «+ Халат».</div>';
+const vCodes=()=>`<div class="row"><h2 style="margin:6px 0">Коды</h2><div class="sp"></div><button class="b p" data-a="ni">+ Халат</button></div><button class="b" data-a="pa" style="width:100%;margin-bottom:12px">🖨 Печать всех этикеток</button>${srch('Артикул или код')}<div id="list">${codeL()}</div>`;
+
+/* ---------- ещё ---------- */
+function vMore(){
+ if(sub==='users')return vUsers();if(sub==='log')return vLog();
+ const p=users.filter(u=>!u.active).length;
+ return `<h2>Ещё</h2>${isAdm()?`<div class="card lnk" data-a="sub" data-v="users"><b>Сотрудники</b> ${p?`<span class="chip r">${p} ждут подтверждения</span>`:''}<div class="mu">Принять, заблокировать, посмотреть</div></div>`:''}
+ <div class="card lnk" data-a="sub" data-v="log"><b>История</b><div class="mu">Кто и что добавил или списал</div></div>
+ <div class="card lnk out" data-a="out"><b>Выйти</b><div>Выход из аккаунта (${esc(me.name)})</div></div>`}
+const back=`<button class="b sm" data-a="sub" data-v="">← Назад</button>`;
+function vUsers(){return `${back}<h2>Сотрудники</h2>`+[...users].sort((a,b)=>a.active-b.active).map(u=>`<div class="card" style="border-color:${u.active?'var(--gn)':'var(--rd)'}"><div class="row"><div><b>${esc(u.name)}</b><div class="mu">${esc(u.email)}</div></div><div class="sp"></div><span class="chip ${u.active?'g':'r'}">${u.role==='admin'?'руководитель':u.active?'активен':'не допущен'}</span></div>${u.uid===me.uid?'':`<button class="b sm ${u.active?'r':'g'}" data-a="uact" data-id="${u.uid}" style="margin-top:8px">${u.active?'Заблокировать':'Подтвердить'}</button>`}</div>`).join('')}
+function vLog(){return `${back}<h2>История</h2>`+(log.map(m=>`<div class="card" style="border-color:${m.type==='in'?'var(--gn)':'var(--rd)'}"><b>${TY[m.type]} ${m.type==='in'?'+':'−'}${m.qty}</b> · ${esc(m.txt)}<div class="mu">${tm(m.ts)} · ${esc(m.user)} · мешок ${esc(m.bag)}</div></div>`).join('')||'<div class="card mu">Операций пока нет</div>')}
+
+/* ---------- операции ---------- */
+async function move(i,b,t,n){const w=writeBatch(db);w.update(doc(db,'bags',b.id),{['q.'+i.id]:increment(t==='in'?n:-n)});
+ w.set(doc(collection(db,'log')),{ts:Date.now(),type:t,iid:i.id,txt:`${i.art} ${i.size}`,bag:b.code,qty:n,user:me.name,uid:me.uid});await w.commit();beep();toast('Записано ✅')}
+function itemDlg(i){
+ const L=bags.filter(b=>b.q?.[i.id]>0);
+ const d=ov(`<h3>${esc(i.art)} · ${esc(i.size)}</h3><div class="mu">${esc(i.name||'')} · код ${esc(i.code)}</div><div class="big" style="margin:8px 0">${tot(i.id)} <small style="font-size:18px">шт</small></div><b>📍 Где лежит</b>${L.map(b=>`<div class="card"><div class="row"><div><b>${esc(b.code)}</b><div class="mu">${place(b)}</div></div><div class="sp"></div><span class="n">${b.q[i.id]}</span></div></div>`).join('')||'<div class="mu" style="margin:6px 0">Нигде. Сделайте приход.</div>'}
+ <div class="row" style="margin-top:10px"><button class="b g sp" id="in">➕ Приход</button><button class="b r sp" id="out">➖ Списать</button></div>
+ ${isAdm()&&!tot(i.id)?'<button class="b sm" id="del" style="margin-top:8px">Удалить халат</button>':''}<button class="b" data-x style="width:100%;margin-top:8px">Закрыть</button>`);
+ d.querySelector('#in').onclick=()=>{d.remove();mvDlg(i,'in')};d.querySelector('#out').onclick=()=>{d.remove();mvDlg(i,'out')};
+ const x=d.querySelector('#del');if(x)x.onclick=async()=>{if(confirm('Удалить '+i.art+' '+i.size+'?')){await deleteDoc(doc(db,'items',i.id));d.remove()}};
+}
+function mvDlg(i,t,b0){
+ const B=b0?[b0]:t==='in'?bags:bags.filter(b=>b.q?.[i.id]>0);
+ if(!B.length)return toast(t==='in'?'Сначала создайте мешок (вкладка «Мешки»)':'Этого халата нет в мешках');
+ const d=ov(`<h3>${t==='in'?'Приход':'Списание'}: ${esc(i.art)} ${esc(i.size)}</h3><label>Мешок</label><select id="bg">${B.map(b=>`<option value="${b.id}">${esc(b.code)} · Ряд ${esc(b.row||'—')}, Ст. ${esc(b.shelf||'—')} (есть ${b.q?.[i.id]||0})</option>`).join('')}</select><label>Количество</label><input id="qt" type="number" min="1" value="1" inputmode="numeric">${btns('Готово')}`);
+ d.querySelector('#ok').onclick=async()=>{const b=bags.find(x=>x.id===d.querySelector('#bg').value),n=Math.floor(+d.querySelector('#qt').value);
+  if(!(n>0))return toast('Введите количество');if(t==='out'&&n>(b.q?.[i.id]||0))return toast('В мешке только '+(b.q?.[i.id]||0));
+  try{await move(i,b,t,n);d.remove()}catch(e){toast(e.code||e.message)}};
+}
+function bagDlg(b){
+ const L=Object.entries(b.q||{}).filter(([,n])=>n>0).map(([id,n])=>({i:items.find(x=>x.id===id),n})).filter(x=>x.i);
+ const d=ov(`<h3>${esc(b.code)}</h3><div class="chip y">📍 ${place(b)}</div><div style="margin-top:8px"><b>Внутри</b></div>${L.map(({i,n})=>`<div class="row" style="margin:6px 0"><span><b>${esc(i.art)}</b> <span class="pill">${esc(i.size)}</span></span><div class="sp"></div><span class="n" style="font-size:24px">${n}</span><button class="b r sm" data-o="${i.id}">−</button></div>`).join('')||'<div class="mu">Мешок пуст</div>'}
+ <div class="row" style="margin-top:10px"><button class="b g sp" id="ad">➕ Добавить халат</button><button class="b sp" id="pl">🖨 Этикетка</button></div>
+ <div class="row" style="margin-top:8px"><button class="b sp" id="ed">✏️ Изменить место</button>${isAdm()?'<button class="b r sm" id="dl">Удалить</button>':''}</div><button class="b" data-x style="width:100%;margin-top:8px">Закрыть</button>`);
+ d.querySelectorAll('[data-o]').forEach(x=>x.onclick=()=>{d.remove();mvDlg(items.find(i=>i.id===x.dataset.o),'out',b)});
+ d.querySelector('#ad').onclick=()=>{d.remove();addDlg(b)};d.querySelector('#pl').onclick=()=>printL([{t:b.code,s:`Ряд ${b.row||'—'} · Стеллаж ${b.shelf||'—'}`,c:b.code}]);
+ d.querySelector('#ed').onclick=()=>{d.remove();bagForm(b)};
+ const x=d.querySelector('#dl');if(x)x.onclick=async()=>{if(confirm('Удалить мешок '+b.code+'?')){await deleteDoc(doc(db,'bags',b.id));d.remove()}};
+}
+function addDlg(b){
+ if(!items.length)return toast('Сначала добавьте халаты во вкладке «Коды»');
+ const d=ov(`<h3>Добавить в ${esc(b.code)}</h3><label>Халат</label><select id="it">${[...items].sort((a,c)=>(a.art+a.size).localeCompare(c.art+c.size)).map(i=>`<option value="${i.id}">${esc(i.art)} · ${esc(i.size)}</option>`).join('')}</select><label>Количество</label><input id="qt" type="number" min="1" value="1" inputmode="numeric">${btns('Добавить')}`);
+ d.querySelector('#ok').onclick=async()=>{const n=Math.floor(+d.querySelector('#qt').value);if(!(n>0))return toast('Введите количество');
+  try{await move(items.find(i=>i.id===d.querySelector('#it').value),b,'in',n);d.remove()}catch(e){toast(e.code||e.message)}};
+}
+function bagForm(b){
+ const d=ov(`<h3>${b?'Место мешка '+esc(b.code):'Новый мешок'}</h3>${b?'':'<label>Тип мешка</label><select id="ty"><option>MIX</option><option>MONO</option><option>UZUM</option></select>'}<label>Ряд</label><input id="rw" value="${esc(b?.row)}" placeholder="например 3"><label>Стеллаж</label><input id="sh" value="${esc(b?.shelf)}" placeholder="например 2">${btns('Сохранить')}`);
+ d.querySelector('#ok').onclick=async()=>{const row=d.querySelector('#rw').value.trim(),shelf=d.querySelector('#sh').value.trim();
+  try{if(b)await updateDoc(doc(db,'bags',b.id),{row,shelf});
+   else{const ty=d.querySelector('#ty').value,n=Math.max(0,...bags.filter(x=>x.code.startsWith(ty+'-')).map(x=>+x.code.split('-')[1]||0))+1,code=ty+'-'+String(n).padStart(3,'0');
+    await setDoc(doc(collection(db,'bags')),{code,row,shelf,q:{},ts:Date.now()});toast('Создан мешок '+code)}d.remove()}catch(e){toast(e.code||e.message)}};
+}
+function itemForm(){
+ const d=ov(`<h3>Новый халат</h3><label>Артикул</label><input id="ar" placeholder="например ХМ8"><label>Размер</label><input id="sz" list="szl" placeholder="например 2XL"><datalist id="szl">${['S','M','L','XL','2XL','3XL','4XL','5XL'].map(s=>`<option>${s}</option>`).join('')}</datalist><label>Название (необязательно)</label><input id="nm" placeholder="Халат махровый">${btns('Создать')}`);
+ d.querySelector('#ok').onclick=async()=>{const art=d.querySelector('#ar').value.trim(),size=d.querySelector('#sz').value.trim().toUpperCase();
+  if(!art||!size)return toast('Введите артикул и размер');if(items.some(i=>i.art.toLowerCase()===art.toLowerCase()&&i.size===size))return toast('Такой халат уже есть');
+  try{await setDoc(doc(collection(db,'items')),{art,size,name:d.querySelector('#nm').value.trim(),code:'LT'+Date.now().toString(36).toUpperCase(),ts:Date.now()});toast('Халат добавлен, штрих-код создан');d.remove()}catch(e){toast(e.code||e.message)}};
+}
+
+/* ---------- печать этикеток ---------- */
+function printL(L){
+ if(!L.length)return toast('Нет этикеток');const w=window.open('','_blank');if(!w)return toast('Разрешите всплывающие окна');
+ w.document.write(`<html><head><meta charset="utf-8"><title>Этикетки</title><style>body{margin:0;font-family:Arial}.l{display:inline-block;width:58mm;height:40mm;padding:2mm;box-sizing:border-box;text-align:center;page-break-inside:avoid;border:1px dashed #bbb;vertical-align:top}b{font-size:15px}.s{font-size:11px}svg{width:100%;height:21mm}@media print{.l{border:0}}</style></head><body>${L.map((x,k)=>`<div class="l"><b>${esc(x.t)}</b><div class="s">${esc(x.s)}</div><svg id="s${k}"></svg></div>`).join('')}</body></html>`);w.document.close();
+ L.forEach((x,k)=>JsBarcode(w.document.getElementById('s'+k),x.c,{format:'CODE128',displayValue:true,fontSize:13,margin:0,height:55}));
+ setTimeout(()=>{w.focus();w.print()},500);
+}
+
+/* ---------- сканер ---------- */
+function handle(c){const i=items.find(x=>x.code===c),b=bags.find(x=>x.code.toLowerCase()===c.toLowerCase());
+ if(i){beep();itemDlg(i)}else if(b){beep();bagDlg(b)}else toast('Код не найден: '+c)}
+async function openScan(){
+ const d=ov(`<h3>Сканер</h3><video id="vd" playsinline muted style="width:100%;border-radius:14px;background:#000;max-height:38vh"></video><input id="mc" placeholder="Или введите / отсканируйте код" style="margin-top:10px"><div class="row" style="margin-top:12px"><button class="b" data-x>Закрыть</button><div class="sp"></div><button class="b p" id="ok">Найти</button></div>`);
+ let on=true,st;const stop=()=>{on=false;st?.getTracks().forEach(t=>t.stop());d.remove()},go=c=>{c=c.trim();if(c){stop();handle(c)}};
+ d.querySelector('[data-x]').onclick=stop;d.querySelector('#ok').onclick=()=>go(d.querySelector('#mc').value);
+ d.querySelector('#mc').onkeydown=e=>{if(e.key==='Enter')go(e.target.value)};d.querySelector('#mc').focus();
+ try{if(!('BarcodeDetector'in window))throw 0;const det=new BarcodeDetector(),v=d.querySelector('#vd');
+  st=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});v.srcObject=st;await v.play();
+  const loop=async()=>{if(!on)return;try{const r=await det.detect(v);if(r[0]){go(r[0].rawValue);return}}catch{}setTimeout(loop,250)};loop();
+ }catch{d.querySelector('#vd').style.display='none';toast('Камера недоступна — введите код или используйте сканер')}
+}
+
+/* ---------- клики ---------- */
+document.addEventListener('click',e=>{
+ const t=e.target.closest('[data-a]');if(!t||document.querySelector('.ov')&&!t.closest('.ov'))return;
+ const a=t.dataset.a,v=t.dataset.v,id=t.dataset.id;
+ if(a==='tab'){tab=v;sub='';q='';draw()}else if(a==='sub'){sub=v;draw()}else if(a==='out')signOut(auth);
+ else if(a==='scan')openScan();else if(a==='item')itemDlg(items.find(x=>x.id===id));else if(a==='bag')bagDlg(bags.find(x=>x.id===id));
+ else if(a==='nb')bagForm();else if(a==='ni')itemForm();else if(a==='pa')printL(items.map(lab));else if(a==='pi')printL([lab(items.find(x=>x.id===id))]);
+ else if(a==='uact'){const u=users.find(x=>x.uid===id);updateDoc(doc(db,'users',id),{active:!u.active}).catch(er=>toast(er.code))}
+});
+</script></body></html>
