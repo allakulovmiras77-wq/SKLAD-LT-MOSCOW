@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MIAY</title>
+<style>
+*{box-sizing:border-box;margin:0}
+body{background:#05060f;color:#eaf0ff;font:15px system-ui,sans-serif;height:100dvh;overflow:hidden}
+#app{height:100%;display:flex;flex-direction:column;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+.top{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:#0b0d22;border-bottom:1px solid #1d2150;gap:10px}
+button{background:linear-gradient(135deg,#00e5ff,#8a2be2);color:#fff;border:0;border-radius:12px;padding:10px 14px;font-size:15px}
+.top button{background:none;font-size:20px;padding:4px 8px}
+input,select,textarea{width:100%;padding:12px;margin:6px 0;background:#10143a;border:1px solid #2a2f7a;border-radius:12px;color:#fff;font-size:15px}
+.box{padding:16px;overflow:auto}
+.logo{font-size:24px;background:linear-gradient(90deg,#00e5ff,#c04bff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.row{display:flex;gap:12px;padding:12px 14px;align-items:center;border-bottom:1px solid #12163a}
+.row>div:nth-child(2){flex:1;min-width:0}.row small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.av{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#00e5ff,#8a2be2) center/cover;display:grid;place-items:center;font-weight:700;flex:none}
+#list,#msgs{flex:1;overflow:auto}
+#msgs{padding:10px;display:flex;flex-direction:column;gap:6px}
+.m{max-width:82%;padding:8px 10px;border-radius:14px;background:#161a4a;align-self:flex-start;word-break:break-word}
+.m.me{align-self:flex-end;background:linear-gradient(135deg,#0a6cff,#7a2cff)}
+.m img,.m video{max-width:100%;border-radius:10px;display:block}
+.m audio{max-width:100%}
+.m i{display:block;opacity:.6;font-size:11px;text-align:right;font-style:normal}
+.m b{font-size:12px;color:#7ff}.m a{color:#9ff}
+.bar{display:flex;gap:6px;padding:8px;background:#0b0d22;align-items:center}
+.bar input{margin:0}.bar button{padding:10px 12px}
+#mic.on{background:#e11}
+.cover{height:150px;background:#10143a center/cover;flex:none}
+.hd{display:flex;gap:10px;align-items:center;flex:1;min-width:0}
+.ro{padding:14px;text-align:center;opacity:.6}
+small{opacity:.7}
+.ov{position:fixed;inset:0;background:#000c;display:grid;place-items:center;padding:20px}
+.card{background:#0b0d22;border:1px solid #2a2f7a;border-radius:18px;width:100%;max-width:340px;overflow:hidden;padding-bottom:16px;text-align:center}
+.card .av{width:80px;height:80px;margin:-40px auto 8px;border:3px solid #0b0d22;font-size:28px}
+.card button{margin-top:12px}
+</style></head><body>
+<div id="app"></div>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
+<script>
+// ===== ВСТАВЬТЕ СЮДА НАСТРОЙКИ ИЗ FIREBASE (Project settings → Your apps → Web) =====
+const CFG={apiKey:"",authDomain:"",projectId:"",storageBucket:"",messagingSenderId:"",appId:""};
+// =====================================================================================
+firebase.initializeApp(CFG);
+const auth=firebase.auth(),db=firebase.firestore(),st=firebase.storage();
+const $=s=>document.querySelector(s),app=$('#app');
+const U={};let me=null,conf=null,chats=[],curChat=null,unsubC,unsubM,pend=null,pinged=false,mrec,chunks=[],recOn=false;
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const hm=t=>new Date(t).toLocaleTimeString('ru',{hour:'2-digit',minute:'2-digit'});
+const av=(a,t)=>`<div class="av" style="${a?`background-image:url('${esc(a)}')`:''}">${a?'':esc((t||'?')[0].toUpperCase())}</div>`;
+async function getU(id,force){if(force||!U[id]){const d=await db.collection('users').doc(id).get();U[id]=d.exists?{id,...d.data()}:{id,name:'Неизвестный'}}return U[id]}
+async function up(f,path){const r=st.ref(path);await r.put(f);return r.getDownloadURL()}
+function seen(u){
+  if(!u)return'';
+  if((U[me.uid]&&U[me.uid].hideSeen)||u.hideSeen||!u.lastSeen)return'был(а) недавно';
+  const d=Date.now()-u.lastSeen;if(d<70000)return'в сети';
+  const t=new Date(u.lastSeen),today=t.toDateString()===new Date().toDateString();
+  return'был(а) '+(today?'сегодня в ':t.toLocaleDateString('ru')+' в ')+hm(u.lastSeen);
+}
+
+// ---------- Вход ----------
+function loginScreen(){
+  app.innerHTML=`<div class="box" style="margin:auto;width:100%;max-width:380px;text-align:center">
+  <div class="logo" style="font-size:44px;margin-bottom:6px">MIAY</div><p style="opacity:.7;margin-bottom:18px">Вход по номеру телефона</p>
+  <input id="ph" type="tel" placeholder="+998 90 123 45 67"><input id="cd" type="number" placeholder="Код из SMS" style="display:none">
+  <button id="go" style="width:100%;margin-top:8px">Получить код</button></div>`;
+  window.rv=new firebase.auth.RecaptchaVerifier('go',{size:'invisible'});
+  $('#go').onclick=async()=>{
+    try{
+      if(!conf){
+        const p='+'+$('#ph').value.replace(/\D/g,'');
+        conf=await auth.signInWithPhoneNumber(p,window.rv);
+        $('#cd').style.display='block';$('#go').textContent='Войти';
+      }else await conf.confirm($('#cd').value.trim());
+    }catch(e){alert('Ошибка: '+e.message);conf=null;$('#go').textContent='Получить код';$('#cd').style.display='none'}
+  };
+}
+auth.onAuthStateChanged(async u=>{
+  if(!u){me=null;return loginScreen()}
+  me=u;const d=await db.collection('users').doc(u.uid).get();
+  if(!d.exists||!d.data().name)return profileScreen(true);
+  U[u.uid]={id:u.uid,...d.data()};start();
+});
+function start(){
+  if(!pinged){pinged=true;const p=()=>db.collection('users').doc(me.uid).set({lastSeen:Date.now()},{merge:true});p();setInterval(p,30000)}
+  listScreen();
+}
+
+// ---------- Профиль ----------
+async function profileScreen(first){
+  const d=(await db.collection('users').doc(me.uid).get()).data()||{};
+  app.innerHTML=(first?'':`<div class="top"><button onclick="listScreen()">←</button><b>Профиль</b><span></span></div>`)+
+  `<div class="cover" style="background-image:url('${esc(d.bg||'')}')"></div><div class="box">
+  <div style="display:flex;gap:12px;align-items:center">${av(d.avatar,d.name)}<div style="flex:1"><small>Фото профиля</small><input id="avf" type="file" accept="image/*"></div></div>
+  <small>Фон профиля</small><input id="bgf" type="file" accept="image/*">
+  <input id="nm" placeholder="Имя" value="${esc(d.name||'')}"><input id="bio" placeholder="О себе" value="${esc(d.bio||'')}">
+  <label style="display:flex;gap:10px;align-items:center;margin:10px 0"><input id="hs" type="checkbox" style="width:auto;margin:0" ${d.hideSeen?'checked':''}>Скрыть время «был(а) в сети»</label>
+  <button id="sv" style="width:100%">Сохранить</button>
+  ${first?'':'<button onclick="auth.signOut().then(()=>location.reload())" style="width:100%;margin-top:10px;background:#2a2f7a">Выйти</button>'}</div>`;
+  $('#sv').onclick=async()=>{
+    const name=$('#nm').value.trim();if(!name)return alert('Введите имя');
+    $('#sv').disabled=true;$('#sv').textContent='Сохраняю…';
+    try{
+      const data={name,bio:$('#bio').value.trim(),hideSeen:$('#hs').checked,phone:me.phoneNumber};
+      const a=$('#avf').files[0],b=$('#bgf').files[0];
+      if(a)data.avatar=await up(a,`profiles/${me.uid}/avatar_${Date.now()}`);
+      if(b)data.bg=await up(b,`profiles/${me.uid}/bg_${Date.now()}`);
+      await db.collection('users').doc(me.uid).set(data,{merge:true});
+      await getU(me.uid,true);start();
+    }catch(e){alert('Ошибка: '+e.message);$('#sv').disabled=false;$('#sv').textContent='Сохранить'}
+  };
+}
+
+// ---------- Список чатов ----------
+function listScreen(){
+  curChat=null;unsubM&&unsubM();
+  app.innerHTML=`<div class="top"><b class="logo">MIAY</b><span><button onclick="newScreen()">＋</button><button onclick="profileScreen()">👤</button></span></div><div id="list"></div>`;
+  unsubC&&unsubC();
+  unsubC=db.collection('chats').where('members','array-contains',me.uid).onSnapshot(s=>{
+    chats=s.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.lastTs||0)-(a.lastTs||0));
+    if(pend&&chats.find(c=>c.id===pend)){const id=pend;pend=null;return openChat(id)}
+    if(!curChat)renderList();
+  });
+}
+async function info(c){
+  if(c.type==='private'){const o=await getU(c.members.find(x=>x!==me.uid)||me.uid,true);return{t:o.name,a:o.avatar,u:o}}
+  return{t:(c.type==='channel'?'📢 ':'👥 ')+c.name,a:c.avatar};
+}
+async function renderList(){
+  const inf=await Promise.all(chats.map(info));const el=$('#list');if(!el)return;
+  el.innerHTML=chats.length?chats.map((c,i)=>`<div class="row" onclick="openChat('${c.id}')">${av(inf[i].a,inf[i].t)}<div><b>${esc(inf[i].t)}</b><small>${esc(c.last||'')}</small></div><small>${c.lastTs?hm(c.lastTs):''}</small></div>`).join(''):
+  '<div class="ro">Чатов пока нет. Нажмите ＋ и добавьте друга по номеру.</div>';
+}
+
+// ---------- Новый чат / группа / канал ----------
+function newScreen(){
+  app.innerHTML=`<div class="top"><button onclick="listScreen()">←</button><b>Создать</b><span></span></div><div class="box">
+  <select id="ty"><option value="private">Личный чат</option><option value="group">Группа</option><option value="channel">Канал</option></select>
+  <input id="cn" placeholder="Название (для группы и канала)">
+  <input id="ph" placeholder="Номера через запятую: +998901234567">
+  <small>Человек должен сначала сам зайти в MIAY.</small>
+  <button id="mk" style="width:100%;margin-top:12px">Создать</button></div>`;
+  $('#mk').onclick=async()=>{
+    const type=$('#ty').value,name=$('#cn').value.trim();
+    const ph=$('#ph').value.split(',').map(x=>'+'+x.replace(/\D/g,'')).filter(x=>x.length>6);
+    if(type!=='private'&&!name)return alert('Введите название');
+    const found=[],miss=[];
+    try{
+      for(const p of ph){const s=await db.collection('users').where('phone','==',p).get();s.empty?miss.push(p):found.push(s.docs[0].id)}
+      if(miss.length)alert('Не найдены в MIAY: '+miss.join(', '));
+      if(type==='private'){
+        if(found.length!==1)return alert('Для личного чата нужен один номер');
+        const id=[me.uid,found[0]].sort().join('_');
+        await db.collection('chats').doc(id).set({type:'private',members:[me.uid,found[0]]},{merge:true});
+        pend=id;listScreen();
+      }else{
+        const r=await db.collection('chats').add({type,name,owner:me.uid,members:[me.uid,...found],last:'Создано',lastTs:Date.now()});
+        pend=r.id;listScreen();
+      }
+    }catch(e){alert('Ошибка: '+e.message)}
+  };
+}
+
+// ---------- Чат ----------
+async function openChat(id){
+  const c=chats.find(x=>x.id===id);if(!c)return;curChat=c;
+  const i=await info(c),canPost=c.type!=='channel'||c.owner===me.uid;
+  app.innerHTML=`<div class="top"><button onclick="listScreen()">←</button><div class="hd" onclick="card()">${av(i.a,i.t)}<div style="min-width:0"><b>${esc(i.t)}</b><br><small>${c.type==='private'?seen(i.u):c.members.length+' участн.'}</small></div></div></div>
+  <div id="msgs"></div>`+(canPost?`<div class="bar"><button onclick="$('#fl').click()">📎</button><input id="fl" type="file" multiple hidden onchange="sendFiles(this)">
+  <input id="tx" placeholder="Сообщение" onkeydown="if(event.key==='Enter')sendText()"><button id="mic" onclick="rec()">🎤</button><button onclick="sendText()">➤</button></div>`:'<div class="ro">В канале пишет только владелец</div>');
+  let first=true;
+  unsubM&&unsubM();
+  unsubM=db.collection('chats').doc(id).collection('messages').orderBy('ts').limitToLast(200).onSnapshot(async s=>{
+    const ms=s.docs.map(d=>d.data());
+    await Promise.all([...new Set(ms.map(m=>m.from))].map(x=>getU(x)));
+    const el=$('#msgs');if(!el)return;
+    const near=el.scrollHeight-el.scrollTop-el.clientHeight<120;
+    el.innerHTML=ms.map(m=>{
+      const mine=m.from===me.uid;
+      return`<div class="m ${mine?'me':''}">${!mine&&c.type!=='private'?`<b>${esc((U[m.from]||{}).name)}</b>`:''}${body(m)}<i>${hm(m.ts)}</i></div>`;
+    }).join('');
+    if(first||near)el.scrollTop=el.scrollHeight;first=false;
+  });
+}
+function body(m){
+  let h='';const f=m.file;
+  if(f){const u=esc(f.url),t=f.type||'';
+    if(t.startsWith('image/'))h=`<img src="${u}" onclick="window.open('${u}')">`;
+    else if(t.startsWith('video/'))h=`<video src="${u}" controls playsinline></video>`;
+    else if(t.startsWith('audio/'))h=`<audio src="${u}" controls></audio>`;
+    else h=`<a href="${u}" target="_blank">📄 ${esc(f.name)} (${Math.max(1,Math.round(f.size/1024))} КБ)</a>`;}
+  if(m.text)h+=`<div>${esc(m.text)}</div>`;
+  return h;
+}
+async function post(c,m){
+  m.from=me.uid;m.ts=Date.now();
+  await db.collection('chats').doc(c.id).collection('messages').add(m);
+  await db.collection('chats').doc(c.id).update({last:m.text||(m.file.type.startsWith('audio/')?'🎤 Голосовое':'📎 '+m.file.name),lastTs:m.ts});
+}
+async function sendText(){
+  const el=$('#tx'),t=el.value.trim();if(!t)return;el.value='';
+  try{await post(curChat,{text:t})}catch(e){alert('Ошибка: '+e.message)}
+}
+async function sendFiles(inp){
+  const c=curChat,tx=$('#tx');tx.placeholder='Загрузка…';
+  try{
+    for(const f of inp.files){
+      const url=await up(f,`files/${c.id}/${Date.now()}_${f.name}`);
+      await post(c,{file:{url,name:f.name,type:f.type||'application/octet-stream',size:f.size}});
+    }
+  }catch(e){alert('Ошибка: '+e.message)}
+  inp.value='';if($('#tx'))$('#tx').placeholder='Сообщение';
+}
+async function rec(){
+  const b=$('#mic');
+  if(recOn){mrec.stop();recOn=false;b.classList.remove('on');return}
+  try{
+    const c=curChat,s=await navigator.mediaDevices.getUserMedia({audio:true});
+    const mt=['audio/webm','audio/mp4'].find(t=>window.MediaRecorder&&MediaRecorder.isTypeSupported(t))||'';
+    mrec=new MediaRecorder(s,mt?{mimeType:mt}:{});chunks=[];
+    mrec.ondataavailable=e=>chunks.push(e.data);
+    mrec.onstop=async()=>{
+      s.getTracks().forEach(t=>t.stop());
+      const type=(mrec.mimeType||'audio/webm').split(';')[0],ext=type.includes('mp4')?'m4a':'webm';
+      const f=new File([new Blob(chunks,{type})],'voice.'+ext,{type});
+      try{const url=await up(f,`files/${c.id}/${Date.now()}_voice.${ext}`);await post(c,{file:{url,name:f.name,type,size:f.size}})}
+      catch(e){alert('Ошибка: '+e.message)}
+    };
+    mrec.start();recOn=true;b.classList.add('on');
+  }catch(e){alert('Нет доступа к микрофону')}
+}
+async function card(){
+  if(!curChat||curChat.type!=='private')return;
+  const u=(await info(curChat)).u;
+  const o=document.createElement('div');o.className='ov';o.onclick=e=>{if(e.target===o)o.remove()};
+  o.innerHTML=`<div class="card"><div class="cover" style="background-image:url('${esc(u.bg||'')}')"></div>${av(u.avatar,u.name)}<b>${esc(u.name)}</b><br><small>${esc(u.bio||'')}</small><br><small>${seen(u)}</small><br><button onclick="this.closest('.ov').remove()">Закрыть</button></div>`;
+  document.body.appendChild(o);
+}
+</script></body></html>
